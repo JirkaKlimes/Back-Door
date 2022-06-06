@@ -20,16 +20,21 @@ class Client:
             return False
         
         if self.handshake():
-            self.connected = True
-            return True
-        else:
-            self.connected = False
-            return False
-    
+            if self.handle_connection():
+                self.connected = True
+                return True
+        self.connected = False
+        return False
+
+    def handle_connection(self):
+        pass
+
     def handshake(self) -> bool:
         msg = self.recv_bytes(decrypt=False)
         if not msg:
+            if self.debug: print(f"[CLIENT] Failed to handshake with server")
             return False
+        if self.debug: print(f"[CLIENT] Handshake with server successful")
         self.fernet = Fernet(msg)
         self.send_bytes(b'OK')
         return True

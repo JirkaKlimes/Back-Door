@@ -80,13 +80,13 @@ class Server:
         conn.send_bytes(self.encryption_key, encrypt=False)
         status = conn.recv_bytes()
         if status == b'OK':
-            if self.debug: print(f"[SERVER] {conn.addr} connected")
+            if self.debug: print(f"[SERVER] Key exchange succesful from {conn.addr}")
             if hasattr(self, 'handle_connection'):
                 self.handle_connection(conn)
             else:
                 self.connections.append(conn)
         else:
-            if self.debug: print(f"[SERVER] {conn.addr} failed to connect")
+            if self.debug: print(f"[SERVER] Key exchange NOT succesful from {conn.addr}")
 
     def _create_sock(self) -> None:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
