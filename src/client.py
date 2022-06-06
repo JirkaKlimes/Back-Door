@@ -8,6 +8,7 @@ class Client:
     def  __init__(self, addr: tuple, debug: bool = False) -> None:
         self.addr = addr
         self.debug = debug
+        self.connected = False
     
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

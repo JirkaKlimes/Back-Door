@@ -63,6 +63,16 @@ class Connection:
         msg = pickle.loads(pickled)
         return msg
 
+    def start(self):
+        Thread(target=self.reciever, daemon=True).start()
+
+    def reciever(self):
+        while True:
+            msg = self.recieve_dict()
+            if msg is None:
+                break
+            self.server.handle_message(self, msg)
+
 class Server:
     def __init__(self, port: int, ip: str = '', debug: bool = False, start_listening: bool = False) -> None:
         self.addr = (ip, port)
@@ -111,6 +121,8 @@ class Server:
         if self.debug: print(f"[SERVER] Stopped listening on {self.addr}")
         self.listener_thread.stop()
 
+    def handle_message(self, sender: Connection, msg: dict) -> None:
+        raise NotImplementedError
 
 if __name__ == "__main__":
     from config import Config

@@ -17,3 +17,10 @@ if __name__ == "__main__":
 
     client = SlaveClient(addr=Config.SERVER_ADDR, debug=True)
     client.connect()
+
+    while True:
+        msg = {
+            'type': 'test',
+            'data': 'hello from slave'
+        }
+        client.send_dict(msg)

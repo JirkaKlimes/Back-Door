@@ -14,6 +14,14 @@ class SlaveClient(Client):
 
 if __name__ == "__main__":
     from config import Config
+    from pprint import pprint
 
     client = SlaveClient(addr=Config.SERVER_ADDR, debug=True)
-    client.connect()
+
+    while True:
+        if not client.connected:
+            client.connect()
+            continue
+        
+        msg = client.recieve_dict()
+        pprint(msg)
