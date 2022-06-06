@@ -22,6 +22,11 @@ if __name__ == "__main__":
         if not client.connected:
             client.connect()
             continue
+        if not client.recieving:
+            client.start_reciever()
         
-        msg = client.recieve_dict()
-        pprint(msg)
+        msg = {
+            'type': 'test',
+            'data': input()
+        }
+        client.send_dict(msg)

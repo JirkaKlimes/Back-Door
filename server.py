@@ -50,12 +50,3 @@ if __name__ == "__main__":
     import time
 
     server = SlaveServer(port=Config.SERVER_PORT, ip=Config.SERVER_IP, debug=True, start_listening=True)
-
-    while True:
-        time.sleep(1)
-        msg = {
-            'time': time.time(),
-            'msg': 'Hello from Server'
-        }
-        if server.master:
-            server.master.send_dict(msg)

@@ -2,6 +2,8 @@ import socket
 import struct
 import pickle
 from cryptography.fernet import Fernet
+from threading import Thread
+from pprint import pprint
 
 
 class Client:
@@ -9,6 +11,7 @@ class Client:
         self.addr = addr
         self.debug = debug
         self.connected = False
+        self.recieving = False
     
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -82,6 +85,21 @@ class Client:
         msg = pickle.loads(pickled)
         return msg
 
+    def reciever(self):
+        while True:
+            if not self.connected:
+                self.recieving = False
+                break
+            msg = self.recieve_dict()
+            self.handle_message(msg)
+    
+    def start_reciever(self):
+        self.recieving = True
+        Thread(target=self.reciever, daemon=True).start()
+    
+    def handle_message(self, msg):
+        if self.debug: print(f"[CLIENT] Handling message from server")
+        pprint(msg)
 
 if __name__ == '__main__':
     from config import Config

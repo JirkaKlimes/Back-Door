@@ -1,4 +1,7 @@
+from regex import P
 from src.client import Client
+from pprint import pprint
+from threading import Thread
 
 class SlaveClient(Client):
     def __init__(self, addr: tuple, debug: bool = False) -> None:
@@ -12,15 +15,21 @@ class SlaveClient(Client):
             return True
         return False
 
+
 if __name__ == "__main__":
     from config import Config
 
     client = SlaveClient(addr=Config.SERVER_ADDR, debug=True)
-    client.connect()
 
     while True:
+        if not client.connected:
+            client.connect()
+            continue
+        if not client.recieving:
+            client.start_reciever()
+        
         msg = {
             'type': 'test',
-            'data': 'hello from slave'
+            'data': input()
         }
         client.send_dict(msg)
