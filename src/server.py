@@ -64,7 +64,7 @@ class Connection:
         return msg
 
 class Server:
-    def __init__(self, port: int, ip: str = '', debug: bool = False, start: bool = False) -> None:
+    def __init__(self, port: int, ip: str = '', debug: bool = False, start_listening: bool = False) -> None:
         self.addr = (ip, port)
         self.debug = debug
 
@@ -74,14 +74,17 @@ class Server:
         self.fernet = Fernet(self.encryption_key)
 
         self.connections = []
-        if start: self.start()
+        if start_listening: self.start_listener()
 
     def handshake(self, conn: Connection) -> None:
         conn.send_bytes(self.encryption_key, encrypt=False)
         status = conn.recv_bytes()
         if status == b'OK':
-            self.connections.append(conn)
             if self.debug: print(f"[SERVER] {conn.addr} connected")
+            if hasattr(self, 'handle_connection'):
+                self.handle_connection(conn)
+            else:
+                self.connections.append(conn)
         else:
             if self.debug: print(f"[SERVER] {conn.addr} failed to connect")
 
@@ -93,20 +96,23 @@ class Server:
         if self.debug: print(f"[SERVER] Socket created")
     
     def _listener(self) -> None:
-        if self.debug: print(f"[SERVER] Listening on {self.addr}")
         while True:
             conn, addr = self.sock.accept()
             new_connection = Connection(addr, conn, self)
             if self.debug: print(f"[SERVER] Connection from {new_connection.addr}")
             self.handshake(new_connection)
 
-    def start(self) -> None:
-        self.listener_thread = Thread(target=self._listener, daemon=True)
+    def start_listener(self) -> None:
+        if self.debug: print(f"[SERVER] Listening on {self.addr}")
+        self.listener_thread = Thread(target=self._listener)
         self.listener_thread.start()
+    
+    def stop_listener(self) -> None:
+        if self.debug: print(f"[SERVER] Stopped listening on {self.addr}")
+        self.listener_thread.stop()
 
 
 if __name__ == "__main__":
     from config import Config
     
-    server = Server(Config.SERVER_PORT, Config.SERVER_IP, debug=True, start=True)
-    input()
+    server = Server(Config.SERVER_PORT, Config.SERVER_IP, debug=True, start_listening=True)
