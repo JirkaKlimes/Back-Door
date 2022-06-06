@@ -50,14 +50,14 @@ class Client:
             self.sock.sendall(msg)
         except ConnectionResetError:
             self.connected = False
-            if self.debug: print(f"[CLIENT] Disconected from {self.server_ip}:{self.server_port}")
+            if self.debug: print(f"[CLIENT] Disconected from {self.addr}")
 
     def recv_bytes(self, decrypt: bool = True) -> bytes:
         try:
             raw_msglen = self._recvall(4)
         except ConnectionResetError:
             self.connected = False
-            if self.debug: print(f"[CLIENT] Disconected from {self.server_ip}:{self.server_port}")
+            if self.debug: print(f"[CLIENT] Disconected from {self.addr}")
             return None
         if not raw_msglen:
             return None
