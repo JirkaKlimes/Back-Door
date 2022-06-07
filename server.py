@@ -98,6 +98,20 @@ class SlaveServer(Server):
         except AttributeError:
             print(f"[SERVER] Command {msg['command']} not implemented")
 
+    def forward_command(self, msg: dict):
+        msg.pop('type')
+        recipients = msg.pop('recipients')
+        if recipients == 'all':
+            slaves = self.slaves
+        else:
+            slaves = [slave for slave in self.slaves if slave.addr in recipients]
+        responses = self.paralle_wait(slaves, msg)
+        if self.debug: print(f"[SERVER] Received responses")
+        msg = {
+            'responses': responses,
+        }
+        self.master.send_dict(msg)
+
     def forward_loop(self):
         while True:
             time.sleep(0.1)
@@ -105,8 +119,8 @@ class SlaveServer(Server):
                 if not self.master.connected: continue
                 msg = self.master.recieve_dict()
                 if not msg: continue
-                if msg['type'] == 'command':
-                    self.execute_command(msg)
+                if msg['type'] == 'slave_command':
+                    self.forward_command(msg)
                     continue
 
                 print(f"[SERVER] {msg['type']} not implemented.")
