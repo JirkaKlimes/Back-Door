@@ -1,6 +1,7 @@
 from src.server import Server, Connection
 from threading import Thread
 from pprint import pprint
+import hashlib
 
 
 class SlaveServer(Server):
@@ -10,15 +11,27 @@ class SlaveServer(Server):
         self.slaves = []
         self.master = None
         self.commands = Commands(self)
+        self.master_passwd_hash = None
+    
+    def validate_passwd(self, byte_passwd: bytes) -> bool:
+        hashed = hashlib.sha256(byte_passwd).hexdigest()
+        return hashed == self.master_passwd_hash
 
     def handle_connection(self, conn: Connection):
         if self.debug: print(f"[SERVER] Handling connection from {conn.addr}")
         identity = conn.recv_bytes()
         if identity == b'Master':
             conn.send_bytes(b'OK')
-            conn.identity = 'master'
-            self.master = conn
-            if self.debug: print(f"[SERVER] Master connected from {conn.addr}")
+            byte_passwd = conn.recv_bytes()
+            if self.validate_passwd(byte_passwd):
+                conn.send_bytes(b'OK')
+                conn.identity = 'master'
+                self.master = conn
+                if self.debug: print(f"[SERVER] Master connected from {conn.addr}")
+            else:
+                conn.send_bytes(b'NOK')
+                conn.close()
+                if self.debug: print(f"[SERVER] Master rejected from {conn.addr}")
             return
         if identity == b'Slave':
             conn.send_bytes(b'OK')
@@ -109,6 +122,9 @@ if __name__ == "__main__":
     from config import Config
     import time
 
-    server = SlaveServer(port=Config.SERVER_PORT, ip=Config.SERVER_IP, debug=True, start_listening=True)
+    server = SlaveServer(port=Config.SERVER_PORT, ip=Config.SERVER_IP, debug=True)
 
+    server.master_passwd_hash = Config.MASTER_PASSWORD_HASH
+
+    server.start_listener()
     server.forward_loop()

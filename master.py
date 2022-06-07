@@ -11,12 +11,18 @@ class MasterClient(Client):
         self.available_slaves = []
         self.selected_slaves = []
 
+        self.password = None
+
     def handle_connection(self) -> bool:
         if self.debug: print(f"[CLIENT] Sending identity to server")
         self.send_bytes(b'Master')
         if self.recv_bytes() == b'OK':
-            if self.debug: print(f"[CLIENT] Server accepted identity")
-            return True
+            byte_passwd = self.password.encode('utf-8')
+            if self.debug: print(f"[CLIENT] Sending password to server")
+            self.send_bytes(byte_passwd)
+            if self.recv_bytes() == b'OK':
+                if self.debug: print(f"[CLIENT] Server accepted identity")
+                return True
         return False
 
     def show_prompt(self) -> str:
@@ -157,5 +163,6 @@ if __name__ == "__main__":
     from config import Config
 
     master = MasterClient(addr=Config.SERVER_ADDR, debug=True)
-    
+    master.password = Config.MASTER_PASSWORD
+
     master.command_loop()
