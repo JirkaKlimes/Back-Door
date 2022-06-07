@@ -92,7 +92,9 @@ class Server:
         if status == b'OK':
             if self.debug: print(f"[SERVER] Key exchange succesful from {conn.addr}")
             if hasattr(self, 'handle_connection'):
-                self.handle_connection(conn)
+                t = Thread(target=self.handle_connection, args=(conn,))
+                t.start()
+                # self.handle_connection(conn)
             else:
                 self.connections.append(conn)
         else:

