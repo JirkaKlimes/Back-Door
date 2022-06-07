@@ -11,18 +11,35 @@ class MasterClient(Client):
         self.available_slaves = []
         self.selected_slaves = []
 
-        self.password = None
+    def get_password(self) -> str:
+        return input("Password: ")
 
     def handle_connection(self) -> bool:
         if self.debug: print(f"[CLIENT] Sending identity to server")
         self.send_bytes(b'Master')
         if self.recv_bytes() == b'OK':
-            byte_passwd = self.password.encode('utf-8')
-            if self.debug: print(f"[CLIENT] Sending password to server")
-            self.send_bytes(byte_passwd)
-            if self.recv_bytes() == b'OK':
-                if self.debug: print(f"[CLIENT] Server accepted identity")
-                return True
+            msg = self.recv_bytes()
+            if msg == b'REGISTER':
+                byte_passwd = self.get_password().encode('utf-8')
+                if self.debug: print(f"[CLIENT] Registering password")
+                self.send_bytes(byte_passwd)
+                if self.recv_bytes() == b'OK':
+                    if self.debug: print(f"[CLIENT] Password registered successfully")
+                    return True
+                else:
+                    if self.debug: print(f"[CLIENT] Password registration failed")
+                    return False
+            elif msg == b'LOGIN':
+                print("Logging in...")
+                byte_passwd = self.get_password().encode('utf-8')
+                self.send_bytes(byte_passwd)
+                if self.debug: print(f"[CLIENT] Sending password to server")
+                if self.recv_bytes() == b'OK':
+                    if self.debug: print(f"[CLIENT] Password accepted")
+                    return True
+                else:
+                    if self.debug: print(f"[CLIENT] Password rejected")
+                    return False
         return False
 
     def show_prompt(self) -> str:
@@ -30,9 +47,9 @@ class MasterClient(Client):
             selected = ""
             for i, slave in enumerate(self.selected_slaves):
                 if i == 0:
-                    selected += f"┌[{slave['username']}@{slave['hostname']}]\n"
+                    selected += f"┌({slave['username']}@{slave['hostname']})\n"
                 else:
-                    selected += f"├[{slave['username']}@{slave['hostname']}]\n"
+                    selected += f"├({slave['username']}@{slave['hostname']})\n"
             print(selected, end="")
             command = input("└ $ ")
         else:
@@ -77,9 +94,7 @@ class Commands:
             'command': 'list',
             }
         self.master.send_dict(msg)
-        print('sent')
         msg = self.master.recieve_dict()
-        print('recieved')
         if not msg: print("No response from server.")
         index_len = 5
         username_len = 10
@@ -145,11 +160,11 @@ class Commands:
         for response in msg['responses']:
             if response['response'] is None:
                 slave = self.master.pop_slave(response['addr'])
-                print(f"┌[{slave['username']}@{slave['hostname']}]")
+                print(f"┌({slave['username']}@{slave['hostname']})")
                 print('└> Disconnected!\n')
             for slave in self.master.selected_slaves:
                 if slave['addr'] == response['addr']:
-                    print(f"┌[{slave['username']}@{slave['hostname']}]")
+                    print(f"┌({slave['username']}@{slave['hostname']})")
                     print('└>',end='')
                     output = response['response']['cmd_output'].split('\n')
                     for line in output:
@@ -163,6 +178,5 @@ if __name__ == "__main__":
     from config import Config
 
     master = MasterClient(addr=Config.SERVER_ADDR, debug=True)
-    master.password = Config.MASTER_PASSWORD
 
     master.command_loop()

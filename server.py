@@ -2,6 +2,7 @@ from src.server import Server, Connection
 from threading import Thread
 from pprint import pprint
 import hashlib
+from rich.console import Console
 
 
 class SlaveServer(Server):
@@ -12,35 +13,55 @@ class SlaveServer(Server):
         self.master = None
         self.commands = Commands(self)
         self.master_passwd_hash = None
-    
-    def validate_passwd(self, byte_passwd: bytes) -> bool:
-        hashed = hashlib.sha256(byte_passwd).hexdigest()
-        return hashed == self.master_passwd_hash
+        self.console = Console()
 
-    def handle_connection(self, conn: Connection):
-        if self.debug: print(f"[SERVER] Handling connection from {conn.addr}")
-        identity = conn.recv_bytes()
-        if identity == b'Master':
+    def start_listener(self) -> None:
+        self.console.print(f"[SERVER] Listening on {self.addr[0]}:{self.addr[1]}")
+        super().start_listener()
+
+    def _handle_master_connection(self, conn) -> bool:
+        if self.master_passwd_hash == None:
+            self.console.print(f"\tRegistering master")
+            conn.send_bytes(b'REGISTER')
+            passwd = conn.recv_bytes()
+            self.console.print(f"\tClient sent password")
+            self.master_passwd_hash = hashlib.sha256(passwd).hexdigest()
             conn.send_bytes(b'OK')
-            byte_passwd = conn.recv_bytes()
-            if self.validate_passwd(byte_passwd):
+            conn.identity = 'master'
+            self.master = conn
+            self.console.print(f"[green]\tMaster connected[/]")
+            return True
+        else:
+            conn.send_bytes(b'LOGIN')
+            self.console.print(f"\tRequesting login")
+            passwd = conn.recv_bytes()
+            self.console.print(f"\tClient sent password")
+            hashed = hashlib.sha256(passwd).hexdigest()
+            if hashed == self.master_passwd_hash:
                 conn.send_bytes(b'OK')
                 conn.identity = 'master'
                 self.master = conn
-                if self.debug: print(f"[SERVER] Master connected from {conn.addr}")
-            else:
-                conn.send_bytes(b'NOK')
-                conn.close()
-                if self.debug: print(f"[SERVER] Master rejected from {conn.addr}")
-            return
+                self.console.print(f"\t[green]Master connected[/]")
+                return True
+        self.console.print(f"\t[red]Master rejected[/]")
+        return False
+
+    def handle_connection(self, conn: Connection):
+        self.console.print(f"[SERVER] Handling connection from {conn.addr[0]}:{conn.addr[1]}")
+        identity = conn.recv_bytes()
+        if identity == b'Master':
+            conn.send_bytes(b'OK')
+            if self._handle_master_connection(conn):
+                return
         if identity == b'Slave':
             conn.send_bytes(b'OK')
             conn.identity = 'slave'
             self.slaves.append(conn)
-            if self.debug: print(f"[SERVER] Slave connected from {conn.addr}")
+            self.console.print(f"\t[green]Slave connected[/]")
             return
         conn.send_bytes(b'ERROR')
-        if self.debug: print(f"[SERVER] Unknown identity from {conn.addr}")
+        self.console.print(f"\t[red]Unknown identity[/]")
+        conn.close()
 
     def paralle_wait(self, slaves, msg):
         responses = [{'addr': slave.addr, 'response': None} for slave in slaves]
@@ -58,6 +79,12 @@ class SlaveServer(Server):
             t.join()
         return responses
 
+    def execute_command(self, msg: dict):
+        try:
+            hasattr(self.commands, msg['command'])(msg)
+        except AttributeError:
+            self.console.print(f"[red][SERVER] Command {msg['command']} not implemented[/]")
+
     def forward_loop(self):
         while True:
             time.sleep(0.1)
@@ -67,15 +94,10 @@ class SlaveServer(Server):
                 if not msg: continue
                 if self.debug: pprint(msg)
                 if msg['type'] == 'command':
-                    if msg['command'] == 'list':
-                        self.commands.list()
-                        continue
-                    
-                    if msg['command'] == 'cmd':
-                        self.commands.cmd(msg)
-                        continue
-                
-                print(f"[SERVER] {msg['type']} not implemented.")
+                    self.execute_command(msg)
+                    continue
+
+                print(f"[red][SERVER] {msg['type']} not implemented.[/]")
                 pprint(msg)
 
 class Commands:
@@ -122,7 +144,7 @@ if __name__ == "__main__":
     from config import Config
     import time
 
-    server = SlaveServer(port=Config.SERVER_PORT, ip=Config.SERVER_IP, debug=True)
+    server = SlaveServer(port=Config.SERVER_PORT, ip=Config.SERVER_IP)
 
     server.master_passwd_hash = Config.MASTER_PASSWORD_HASH
 
