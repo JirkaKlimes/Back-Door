@@ -247,7 +247,7 @@ class Commands:
                         print(f"\t{line}")
 
     def exit(self, command):
-        self.master.client.sock.close()
+        self.master.sock.close()
         sys.exit()
 
     def sendfile(self, command):
