@@ -211,7 +211,7 @@ class Commands:
         if len(command) == 1:
             if not self.list('list'):
                 return
-            slaves = self.console.input(f"{ARROW}[bold yellow]Slaves: [/]",)
+            slaves = self.console.input(f"{ARROW}[bold yellow]Indexes: [/]",)
             args = slaves.split(' ')
         else:
             args = command[1:]

