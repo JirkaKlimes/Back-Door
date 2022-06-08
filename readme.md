@@ -5,7 +5,7 @@ This program is developed for educational purpose only!
 I am not responsible for any misuse of this program.
 
 ## Description
-* Easily deployable botnet/backdoor written in pure python
+* Easily deployable botnet/backdoor written in python
 
 ## Features
 * Multi client support
@@ -17,5 +17,6 @@ I am not responsible for any misuse of this program.
 
 ## To-Do
 * Send entire directories
-* Stream video
+* Capture and stream video
 * Controll mouse and keyboard
+* Update server ip using 3rd party service
