@@ -13,7 +13,7 @@ I am not responsible for any misuse of this program.
 * Encrypted communication
 * File transfer
 * Powershell access
-* Command execution
+
 
 ## To-Do
 * Send entire directories
